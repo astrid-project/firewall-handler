@@ -13,15 +13,17 @@ import (
 func Inject(chains map[string]k8sfirewall.Chain) {
 	var waiter sync.WaitGroup
 	waiter.Add(len(chains))
-	for ip, chain := range chains {
-		go push(ip, chain.Rule, &waiter)
+	for currentIP, currentChain := range chains {
+		go func(ip string, chain k8sfirewall.Chain) {
+			defer waiter.Done()
+			push(ip, chain.Rule)
+			apply(ip, chain.Name)
+		}(currentIP, currentChain)
 	}
 	waiter.Wait()
 }
 
-func push(ip string, rules []k8sfirewall.ChainRule, waiter *sync.WaitGroup) {
-	defer waiter.Done()
-
+func push(ip string, rules []k8sfirewall.ChainRule) {
 	for _, rule := range rules {
 		endPoint := "http://" + ip + ":9000/polycube/v1/firewall/fw/chain/ingress/append/"
 		data, err := marshal(rule)
@@ -46,4 +48,19 @@ func marshal(rule k8sfirewall.ChainRule) ([]byte, error) {
 		return nil, err
 	}
 	return data, nil
+}
+
+func apply(ip, name string) (bool, error) {
+	endPoint := "http://" + ip + ":9000/polycube/v1/firewall/fw/chain/" + name + "/apply-rules/"
+	req, err := http.NewRequest("POST", endPoint, nil)
+	req.Header.Set("Content-Type", "application/json")
+	client := &http.Client{}
+
+	resp, err := client.Do(req)
+	if err != nil {
+		log.Errorln("Error while trying to apply rules:", err)
+	}
+	defer resp.Body.Close()
+
+	return true, nil
 }
