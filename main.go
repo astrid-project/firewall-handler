@@ -24,7 +24,6 @@ func homePage(w http.ResponseWriter, r *http.Request) {
 		fmt.Println("error in unmarshalling xml", err)
 		return
 	}
-	fmt.Printf("%+v\n", g)
 
 	//	parse...
 	chains := Parse(g)

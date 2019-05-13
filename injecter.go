@@ -37,6 +37,7 @@ func push(ip string, rules []k8sfirewall.ChainRule) {
 				log.Errorln("Error while trying to send request:", err)
 			}
 			defer resp.Body.Close()
+			log.Infoln("Pushed rule in", ip)
 		}
 	}
 }
