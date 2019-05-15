@@ -39,6 +39,5 @@ func handleRequests() {
 }
 
 func main() {
-	homePage(nil, nil)
 	handleRequests()
 }
