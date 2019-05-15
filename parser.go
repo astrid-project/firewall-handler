@@ -12,9 +12,10 @@ func Parse(graph *NFV) map[string]k8sfirewall.Chain {
 
 	for _, node := range graph.Graphs[0].Nodes {
 		if strings.ToLower(node.FunctionalType) == "firewall" {
-			_, exists := rulesMap[node.Name]
+			ip := node.Neighbour[0].Name
+			_, exists := rulesMap[ip]
 			if !exists {
-				rulesMap[node.Name] = k8sfirewall.Chain{}
+				rulesMap[ip] = k8sfirewall.Chain{}
 			}
 
 			//	parse the rules
@@ -25,7 +26,6 @@ func Parse(graph *NFV) map[string]k8sfirewall.Chain {
 				Rule:     rules,
 			}
 
-			ip := node.Neighbour[0].Name
 			rulesMap[ip] = chain
 		}
 	}
