@@ -25,7 +25,8 @@ func Parse(graph *NFV) map[string]k8sfirewall.Chain {
 				Rule:     rules,
 			}
 
-			rulesMap[node.Name] = chain
+			ip := node.Neighbour[0].Name
+			rulesMap[ip] = chain
 		}
 	}
 
