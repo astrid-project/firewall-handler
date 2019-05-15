@@ -4,6 +4,8 @@ import (
 	"strconv"
 	"strings"
 
+	log "github.com/sirupsen/logrus"
+
 	k8sfirewall "github.com/SunSince90/polycube/src/components/k8s/utils/k8sfirewall"
 )
 
@@ -13,9 +15,9 @@ func Parse(graph *NFV) map[string]k8sfirewall.Chain {
 	for _, node := range graph.Graphs[0].Nodes {
 		if strings.ToLower(node.FunctionalType) == "firewall" {
 			ip := node.Neighbour[0].Name
-			_, exists := rulesMap[ip]
-			if !exists {
-				rulesMap[ip] = k8sfirewall.Chain{}
+
+			if len(node.Configuration.Firewall.Elements) < 1 {
+				log.Warningln("No firewall configuration for pod with ip", ip)
 			}
 
 			//	parse the rules
