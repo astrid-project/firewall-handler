@@ -9,11 +9,11 @@ import (
 )
 
 func homePage(w http.ResponseWriter, r *http.Request) {
-	//fmt.Fprintf(w, "Welcome to the HomePage!")
-	fmt.Println("Endpoint Hit: homePage")
+	fmt.Fprintf(w, "Success")
+	fmt.Println("\t\t--- HIT ---")
 
-	//body, err := ioutil.ReadAll(r.Body)
-	body, err := ioutil.ReadFile("./conf.xml")
+	body, err := ioutil.ReadAll(r.Body)
+	//body, err := ioutil.ReadFile("./conf.xml")
 	if err != nil {
 		fmt.Println("Error in getting body:", err)
 	}
