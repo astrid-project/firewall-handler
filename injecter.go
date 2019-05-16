@@ -24,7 +24,7 @@ func Inject(chains map[string]k8sfirewall.Chain) {
 }
 
 func reset(ip string) {
-	endPoint := "http://" + ip + ":9000/polycube/v1/firewall/fw/chain/ingress"
+	endPoint := "http://" + ip + ":9000/polycube/v1/firewall/fw/chain/ingress/rule"
 	req, err := http.NewRequest("DELETE", endPoint, nil)
 	req.Header.Set("Content-Type", "application/json")
 
