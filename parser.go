@@ -41,12 +41,13 @@ func parseRules(elements []Elements) []k8sfirewall.ChainRule {
 
 	for i := 0; i < len(elements); i++ {
 		rules[i] = k8sfirewall.ChainRule{
-			Id:     int32(i),
-			Src:    parseIP(elements[i].Source),
-			Dst:    parseIP(elements[i].Destination),
-			Sport:  parsePort(elements[i].SrcPort),
-			Dport:  parsePort(elements[i].DstPort),
-			Action: parseAction(elements[i].Action),
+			Id:          int32(i),
+			Src:         parseIP(elements[i].Source),
+			Dst:         parseIP(elements[i].Destination),
+			Sport:       parsePort(elements[i].SrcPort),
+			Dport:       parsePort(elements[i].DstPort),
+			Action:      parseAction(elements[i].Action),
+			Description: "astrid.io/policyname=foo",
 		}
 	}
 
