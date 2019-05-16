@@ -16,11 +16,25 @@ func Inject(chains map[string]k8sfirewall.Chain) {
 	for currentIP, currentChain := range chains {
 		go func(ip string, chain k8sfirewall.Chain) {
 			defer waiter.Done()
+			reset(ip)
 			push(ip, chain.Rule)
 			apply(ip, chain.Name)
 		}(currentIP, currentChain)
 	}
 	waiter.Wait()
+}
+
+func reset(ip string) {
+	endPoint := "http://" + ip + ":9000/polycube/v1/firewall/fw/chain/ingress"
+	req, err := http.NewRequest("DELETE", endPoint, nil)
+	req.Header.Set("Content-Type", "application/json")
+
+	client := &http.Client{}
+	_, err = client.Do(req)
+	if err != nil {
+		log.Errorln("Error while trying to send request:", err)
+	}
+
 }
 
 func push(ip string, rules []k8sfirewall.ChainRule) {
