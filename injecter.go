@@ -16,7 +16,6 @@ func Inject(chains map[string]k8sfirewall.Chain) {
 	for currentIP, currentChain := range chains {
 		go func(ip string, chain k8sfirewall.Chain) {
 			defer waiter.Done()
-			reset(ip)
 			push(ip, chain.Rule)
 			apply(ip, chain.Name)
 		}(currentIP, currentChain)
@@ -38,6 +37,9 @@ func reset(ip string) {
 }
 
 func push(ip string, rules []k8sfirewall.ChainRule) {
+	if len(rules) > 0 {
+		reset(ip)
+	}
 	for _, rule := range rules {
 		endPoint := "http://" + ip + ":9000/polycube/v1/firewall/fw/chain/ingress/append/"
 		data, err := marshal(rule)
