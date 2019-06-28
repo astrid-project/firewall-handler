@@ -23,7 +23,7 @@ func Parse(graph *NFV) map[string]k8sfirewall.Chain {
 			//	parse the rules
 			rules := parseRules(node.Configuration.Firewall.Elements)
 			chain := k8sfirewall.Chain{
-				Name:     "egress", //TODO: this has to be defined on the low level configuration
+				Name:     "ingress", //TODO: this has to be defined on the low level configuration
 				Default_: parseAction(node.Configuration.Firewall.DefaultAction),
 				Rule:     rules,
 			}

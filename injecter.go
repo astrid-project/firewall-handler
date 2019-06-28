@@ -42,10 +42,10 @@ func push(ip string, rules []k8sfirewall.ChainRule) {
 		reset(ip)
 	}*/
 	for _, rule := range rules {
-		egressRule := rule
 		ingressRule := rule
-		ingressRule.Dst = rule.Src
-		ingressRule.Src = rule.Dst
+		egressRule := rule
+		egressRule.Dst = rule.Src
+		egressRule.Src = rule.Dst
 
 		//	Egress
 		egress := func(er k8sfirewall.ChainRule) {
