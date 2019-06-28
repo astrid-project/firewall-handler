@@ -17,7 +17,8 @@ func Inject(chains map[string]k8sfirewall.Chain) {
 		go func(ip string, chain k8sfirewall.Chain) {
 			defer waiter.Done()
 			push(ip, chain.Rule)
-			apply(ip, chain.Name)
+			apply(ip, "ingress")
+			apply(ip, "egress")
 		}(currentIP, currentChain)
 	}
 	waiter.Wait()
@@ -37,23 +38,51 @@ func reset(ip string) {
 }
 
 func push(ip string, rules []k8sfirewall.ChainRule) {
-	if len(rules) > 0 {
+	/*if len(rules) > 0 {
 		reset(ip)
-	}
+	}*/
 	for _, rule := range rules {
-		endPoint := "http://" + ip + ":9000/polycube/v1/firewall/fw/chain/ingress/append/"
-		data, err := marshal(rule)
-		if err == nil {
-			req, err := http.NewRequest("POST", endPoint, bytes.NewBuffer(data))
-			req.Header.Set("Content-Type", "application/json")
+		egressRule := rule
+		ingressRule := rule
+		ingressRule.Dst = rule.Src
+		ingressRule.Src = rule.Dst
 
-			client := &http.Client{}
-			_, err = client.Do(req)
-			if err != nil {
-				log.Errorln("Error while trying to send request:", err)
+		//	Egress
+		egress := func(er k8sfirewall.ChainRule) {
+			endPoint := "http://" + ip + ":9000/polycube/v1/firewall/fw/chain/egress/append/"
+			data, err := marshal(rule)
+			if err == nil {
+				req, err := http.NewRequest("POST", endPoint, bytes.NewBuffer(data))
+				req.Header.Set("Content-Type", "application/json")
+
+				client := &http.Client{}
+				_, err = client.Do(req)
+				if err != nil {
+					log.Errorln("Error while trying to send request:", err)
+				}
 			}
-			log.Infoln("Pushed rule in", ip)
 		}
+
+		//	Ingress
+		ingress := func(ir k8sfirewall.ChainRule) {
+			endPoint := "http://" + ip + ":9000/polycube/v1/firewall/fw/chain/ingress/append/"
+			data, err := marshal(rule)
+			if err == nil {
+				req, err := http.NewRequest("POST", endPoint, bytes.NewBuffer(data))
+				req.Header.Set("Content-Type", "application/json")
+
+				client := &http.Client{}
+				_, err = client.Do(req)
+				if err != nil {
+					log.Errorln("Error while trying to send request:", err)
+				}
+			}
+		}
+
+		egress(egressRule)
+		ingress(ingressRule)
+
+		log.Infoln("Pushed policy in", ip)
 	}
 }
 
