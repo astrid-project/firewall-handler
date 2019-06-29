@@ -23,15 +23,16 @@ func Inject(chains map[string]k8sfirewall.Chain) {
 		}(currentIP, currentChain)
 	}
 	waiter.Wait()
+	fmt.Println("\t\t--- END ---")
 }
 
 func reset(ip string) {
 
 	ingress := func() {
 		for i := 1; i < 50; i++ {
-			ruleNumber := fmt.Sprint(i)
+
 			//	Reset ingress
-			endPoint := "http://" + ip + ":9000/polycube/v1/firewall/fw/chain/ingress/rule/" + ruleNumber
+			endPoint := "http://" + ip + ":9000/polycube/v1/firewall/fw/chain/ingress/rule/1"
 			req, err := http.NewRequest("DELETE", endPoint, nil)
 			req.Header.Set("Content-Type", "application/json")
 			client := &http.Client{}
@@ -49,9 +50,8 @@ func reset(ip string) {
 	egress := func() {
 		//	Reset egress
 		for i := 1; i < 50; i++ {
-			ruleNumber := fmt.Sprint(i)
 			//	Reset ingress
-			endPoint := "http://" + ip + ":9000/polycube/v1/firewall/fw/chain/egress/rule/" + ruleNumber
+			endPoint := "http://" + ip + ":9000/polycube/v1/firewall/fw/chain/egress/rule/1"
 			req, err := http.NewRequest("DELETE", endPoint, nil)
 			req.Header.Set("Content-Type", "application/json")
 			client := &http.Client{}
