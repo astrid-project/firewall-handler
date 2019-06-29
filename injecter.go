@@ -121,14 +121,14 @@ func push(ip string, rules []k8sfirewall.ChainRule) {
 
 		log.Infoln("Pushed the following policy in", ip, ":")
 
-		ingressText := formatText(ingressRule, "ingress")
-		egressText := formatText(egressRule, "egress")
+		ingressText := formatText(ingressRule, ip, "ingress")
+		egressText := formatText(egressRule, ip, "egress")
 		fmt.Println(ingressText)
 		fmt.Println(egressText)
 	}
 }
 
-func formatText(rule k8sfirewall.ChainRule, direction string) string {
+func formatText(rule k8sfirewall.ChainRule, ip, direction string) string {
 	ingress := func() string {
 		ingressText := "\t FROM "
 
@@ -139,7 +139,13 @@ func formatText(rule k8sfirewall.ChainRule, direction string) string {
 		}
 
 		ingressText += " "
-		ingressText += "TO: " + rule.Dst
+		ingressText += "TO: "
+
+		if len(rule.Dst) > 0 {
+			ingressText += rule.Dst
+		} else {
+			ingressText += ip
+		}
 
 		if rule.Sport != 0 {
 			ingressText += " SOURCE-PORT " + fmt.Sprint(rule.Sport)
@@ -165,11 +171,17 @@ func formatText(rule k8sfirewall.ChainRule, direction string) string {
 		if len(rule.Src) > 0 {
 			egressText += rule.Src
 		} else {
-			egressText += "ANY"
+			egressText += ip
 		}
 
 		egressText += " "
-		egressText += "TO: " + rule.Dst
+		egressText += "TO: "
+
+		if len(rule.Dst) > 0 {
+			egressText += rule.Dst
+		} else {
+			egressText += "ANY"
+		}
 
 		if rule.Sport != 0 {
 			egressText += " SOURCE-PORT " + fmt.Sprint(rule.Sport)
