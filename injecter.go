@@ -26,75 +26,42 @@ func Inject(chains map[string]k8sfirewall.Chain) {
 }
 
 func reset(ip string) {
-	marshal := func(rule k8sfirewall.ChainRule) ([]byte, error) {
-		data, err := json.MarshalIndent(&rule, "", "   ")
-		if err != nil {
-			log.Errorln("Cannot marshal to json:", err)
-			return nil, err
-		}
-		return data, nil
-	}
 
 	ingress := func() {
-		//	Reset ingress
-		endPoint := "http://" + ip + ":9000/polycube/v1/firewall/fw/chain/ingress/rule"
-		req, err := http.NewRequest("DELETE", endPoint, nil)
-		req.Header.Set("Content-Type", "application/json")
-
-		client := &http.Client{}
-		_, err = client.Do(req)
-		if err != nil {
-			log.Errorln("Error while trying to send request:", err)
-		}
-
-		//	Readd rule to allow polycube
-		endPoint = "http://" + ip + ":9000/polycube/v1/firewall/fw/chain/ingress/append/"
-		rule := k8sfirewall.ChainRule{
-			Action: "forward",
-			Dst:    ip,
-			Dport:  9000,
-		}
-		data, err := marshal(rule)
-		if err == nil {
-			req, err := http.NewRequest("POST", endPoint, bytes.NewBuffer(data))
+		for i := 1; i < 50; i++ {
+			ruleNumber := fmt.Sprint(i)
+			//	Reset ingress
+			endPoint := "http://" + ip + ":9000/polycube/v1/firewall/fw/chain/ingress/rule/" + ruleNumber
+			req, err := http.NewRequest("DELETE", endPoint, nil)
 			req.Header.Set("Content-Type", "application/json")
-
 			client := &http.Client{}
-			_, err = client.Do(req)
+			resp, err := client.Do(req)
 			if err != nil {
 				log.Errorln("Error while trying to send request:", err)
+			}
+
+			if resp.StatusCode == 409 {
+				break
 			}
 		}
 	}
 
 	egress := func() {
 		//	Reset egress
-		endPoint := "http://" + ip + ":9000/polycube/v1/firewall/fw/chain/egress/rule"
-		req, err := http.NewRequest("DELETE", endPoint, nil)
-		req.Header.Set("Content-Type", "application/json")
-
-		client := &http.Client{}
-		_, err = client.Do(req)
-		if err != nil {
-			log.Errorln("Error while trying to send request:", err)
-		}
-
-		//	Readd rule to allow polycube
-		endPoint = "http://" + ip + ":9000/polycube/v1/firewall/fw/chain/egress/append/"
-		rule := k8sfirewall.ChainRule{
-			Action: "forward",
-			Src:    ip,
-			Sport:  9000,
-		}
-		data, err := marshal(rule)
-		if err == nil {
-			req, err := http.NewRequest("POST", endPoint, bytes.NewBuffer(data))
+		for i := 1; i < 50; i++ {
+			ruleNumber := fmt.Sprint(i)
+			//	Reset ingress
+			endPoint := "http://" + ip + ":9000/polycube/v1/firewall/fw/chain/egress/rule/" + ruleNumber
+			req, err := http.NewRequest("DELETE", endPoint, nil)
 			req.Header.Set("Content-Type", "application/json")
-
 			client := &http.Client{}
-			_, err = client.Do(req)
+			resp, err := client.Do(req)
 			if err != nil {
 				log.Errorln("Error while trying to send request:", err)
+			}
+
+			if resp.StatusCode == 409 {
+				break
 			}
 		}
 	}
@@ -156,8 +123,8 @@ func push(ip string, rules []k8sfirewall.ChainRule) {
 
 		ingressText := formatText(ingressRule, "ingress")
 		egressText := formatText(egressRule, "egress")
-		log.Println(ingressText)
-		log.Println(egressText)
+		fmt.Println(ingressText)
+		fmt.Println(egressText)
 	}
 }
 
