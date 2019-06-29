@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"sync"
 
@@ -25,27 +26,96 @@ func Inject(chains map[string]k8sfirewall.Chain) {
 }
 
 func reset(ip string) {
-	endPoint := "http://" + ip + ":9000/polycube/v1/firewall/fw/chain/ingress/rule"
-	req, err := http.NewRequest("DELETE", endPoint, nil)
-	req.Header.Set("Content-Type", "application/json")
-
-	client := &http.Client{}
-	_, err = client.Do(req)
-	if err != nil {
-		log.Errorln("Error while trying to send request:", err)
+	marshal := func(rule k8sfirewall.ChainRule) ([]byte, error) {
+		data, err := json.MarshalIndent(&rule, "", "   ")
+		if err != nil {
+			log.Errorln("Cannot marshal to json:", err)
+			return nil, err
+		}
+		return data, nil
 	}
 
+	ingress := func() {
+		//	Reset ingress
+		endPoint := "http://" + ip + ":9000/polycube/v1/firewall/fw/chain/ingress/rule"
+		req, err := http.NewRequest("DELETE", endPoint, nil)
+		req.Header.Set("Content-Type", "application/json")
+
+		client := &http.Client{}
+		_, err = client.Do(req)
+		if err != nil {
+			log.Errorln("Error while trying to send request:", err)
+		}
+
+		//	Readd rule to allow polycube
+		endPoint = "http://" + ip + ":9000/polycube/v1/firewall/fw/chain/ingress/append/"
+		rule := k8sfirewall.ChainRule{
+			Action: "forward",
+			Dst:    ip,
+			Dport:  9000,
+		}
+		data, err := marshal(rule)
+		if err == nil {
+			req, err := http.NewRequest("POST", endPoint, bytes.NewBuffer(data))
+			req.Header.Set("Content-Type", "application/json")
+
+			client := &http.Client{}
+			_, err = client.Do(req)
+			if err != nil {
+				log.Errorln("Error while trying to send request:", err)
+			}
+		}
+	}
+
+	egress := func() {
+		//	Reset egress
+		endPoint := "http://" + ip + ":9000/polycube/v1/firewall/fw/chain/egress/rule"
+		req, err := http.NewRequest("DELETE", endPoint, nil)
+		req.Header.Set("Content-Type", "application/json")
+
+		client := &http.Client{}
+		_, err = client.Do(req)
+		if err != nil {
+			log.Errorln("Error while trying to send request:", err)
+		}
+
+		//	Readd rule to allow polycube
+		endPoint = "http://" + ip + ":9000/polycube/v1/firewall/fw/chain/egress/append/"
+		rule := k8sfirewall.ChainRule{
+			Action: "forward",
+			Src:    ip,
+			Sport:  9000,
+		}
+		data, err := marshal(rule)
+		if err == nil {
+			req, err := http.NewRequest("POST", endPoint, bytes.NewBuffer(data))
+			req.Header.Set("Content-Type", "application/json")
+
+			client := &http.Client{}
+			_, err = client.Do(req)
+			if err != nil {
+				log.Errorln("Error while trying to send request:", err)
+			}
+		}
+	}
+
+	ingress()
+	egress()
 }
 
 func push(ip string, rules []k8sfirewall.ChainRule) {
-	/*if len(rules) > 0 {
+	if len(rules) > 0 {
 		reset(ip)
-	}*/
+	}
 	for _, rule := range rules {
 		ingressRule := rule
+
+		//	Reformat for egress
 		egressRule := rule
 		egressRule.Dst = rule.Src
 		egressRule.Src = rule.Dst
+		egressRule.Sport = rule.Dport
+		egressRule.Dport = rule.Sport
 
 		//	Egress
 		egress := func(er k8sfirewall.ChainRule) {
@@ -82,8 +152,81 @@ func push(ip string, rules []k8sfirewall.ChainRule) {
 		egress(egressRule)
 		ingress(ingressRule)
 
-		log.Infoln("Pushed policy in", ip)
+		log.Infoln("Pushed the following policy in", ip, ":")
+
+		ingressText := formatText(ingressRule, "ingress")
+		egressText := formatText(egressRule, "egress")
+		log.Println(ingressText)
+		log.Println(egressText)
 	}
+}
+
+func formatText(rule k8sfirewall.ChainRule, direction string) string {
+	ingress := func() string {
+		ingressText := "\t FROM "
+
+		if len(rule.Src) > 0 {
+			ingressText += rule.Src
+		} else {
+			ingressText += "ANY"
+		}
+
+		ingressText += " "
+		ingressText += "TO: " + rule.Dst
+
+		if rule.Sport != 0 {
+			ingressText += " SOURCE-PORT " + fmt.Sprint(rule.Sport)
+		}
+
+		if rule.Dport != 0 {
+			ingressText += " DESTINATION-PORT " + fmt.Sprint(rule.Dport)
+		}
+
+		ingressText += " ACTION: "
+		if rule.Action == "forward" {
+			ingressText += " ALLOW"
+		} else {
+			ingressText += " DENY"
+		}
+
+		return ingressText
+	}
+
+	egress := func() string {
+		egressText := "\t FROM "
+
+		if len(rule.Src) > 0 {
+			egressText += rule.Src
+		} else {
+			egressText += "ANY"
+		}
+
+		egressText += " "
+		egressText += "TO: " + rule.Dst
+
+		if rule.Sport != 0 {
+			egressText += " SOURCE-PORT " + fmt.Sprint(rule.Sport)
+		}
+
+		if rule.Dport != 0 {
+			egressText += " DESTINATION-PORT " + fmt.Sprint(rule.Dport)
+		}
+
+		egressText += " ACTION: "
+		if rule.Action == "forward" {
+			egressText += " ALLOW"
+		} else {
+			egressText += " DENY"
+		}
+
+		return egressText
+	}
+
+	if direction == "ingress" {
+		return ingress()
+	}
+
+	return egress()
 }
 
 func marshal(rule k8sfirewall.ChainRule) ([]byte, error) {
