@@ -17,13 +17,29 @@ func Inject(chains map[string]k8sfirewall.Chain) {
 	for currentIP, currentChain := range chains {
 		go func(ip string, chain k8sfirewall.Chain) {
 			defer waiter.Done()
-			push(ip, chain.Rule)
-			apply(ip, "ingress")
-			apply(ip, "egress")
+			if alive(ip) {
+				push(ip, chain.Rule)
+				apply(ip, "ingress")
+				apply(ip, "egress")
+			}
 		}(currentIP, currentChain)
 	}
 	waiter.Wait()
 	fmt.Println("\t\t--- END ---")
+}
+
+func alive(ip string) bool {
+	endPoint := "http://" + ip + ":9000/polycube/v1/firewall/fw/"
+	req, err := http.NewRequest("GET", endPoint, nil)
+	req.Header.Set("Content-Type", "application/json")
+	client := &http.Client{}
+	_, err = client.Do(req)
+	if err != nil {
+		log.Errorf("Pod with ip %s not found (is it dying?)")
+		return false
+	}
+
+	return true
 }
 
 func reset(ip string) {
@@ -38,7 +54,8 @@ func reset(ip string) {
 			client := &http.Client{}
 			resp, err := client.Do(req)
 			if err != nil {
-				log.Errorln("Error while trying to send request:", err)
+				log.Errorln("Error while trying to send request:", err, "(the pod might be TERMINATING.)")
+				return
 			}
 
 			if resp.StatusCode == 409 {
@@ -57,7 +74,8 @@ func reset(ip string) {
 			client := &http.Client{}
 			resp, err := client.Do(req)
 			if err != nil {
-				log.Errorln("Error while trying to send request:", err)
+				log.Errorln("Error while trying to send request:", err, "(the pod might be TERMINATING.)")
+				return
 			}
 
 			if resp.StatusCode == 409 {
@@ -95,7 +113,8 @@ func push(ip string, rules []k8sfirewall.ChainRule) {
 				client := &http.Client{}
 				_, err = client.Do(req)
 				if err != nil {
-					log.Errorln("Error while trying to send request:", err)
+					log.Errorln("Error while trying to send request:", err, "(the pod might be TERMINATING.)")
+					return
 				}
 			}
 		}
@@ -111,7 +130,8 @@ func push(ip string, rules []k8sfirewall.ChainRule) {
 				client := &http.Client{}
 				_, err = client.Do(req)
 				if err != nil {
-					log.Errorln("Error while trying to send request:", err)
+					log.Errorln("Error while trying to send request:", err, "(the pod might be TERMINATING.)")
+					return
 				}
 			}
 		}
@@ -225,7 +245,8 @@ func apply(ip, name string) (bool, error) {
 
 	_, err = client.Do(req)
 	if err != nil {
-		log.Errorln("Error while trying to apply rules:", err)
+		log.Errorln("Error while trying to apply rules:", err, "(the pod might be TERMINATING.)")
+		return false, nil
 	}
 
 	return true, nil
