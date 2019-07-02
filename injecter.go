@@ -35,7 +35,7 @@ func alive(ip string) bool {
 	client := &http.Client{}
 	_, err = client.Do(req)
 	if err != nil {
-		log.Errorf("Pod with ip %s not found (is it dying?)")
+		log.Errorf("Pod with ip %s not found (is it dying?)", ip)
 		return false
 	}
 
@@ -88,63 +88,112 @@ func reset(ip string) {
 	egress()
 }
 
+func buildConnectionRules(ip string, rule k8sfirewall.ChainRule) ([]k8sfirewall.ChainRule, []k8sfirewall.ChainRule) {
+
+	template := func() ([]k8sfirewall.ChainRule, []k8sfirewall.ChainRule) {
+		in := []k8sfirewall.ChainRule{
+			k8sfirewall.ChainRule{
+				Src:       rule.Src,
+				Dst:       rule.Dst,
+				Sport:     rule.Sport,
+				Dport:     rule.Dport,
+				L4proto:   rule.L4proto,
+				Conntrack: "new",
+			},
+			k8sfirewall.ChainRule{
+				Src:       rule.Src,
+				Dst:       rule.Dst,
+				Sport:     rule.Sport,
+				Dport:     rule.Dport,
+				L4proto:   rule.L4proto,
+				Conntrack: "established",
+			},
+		}
+		e := []k8sfirewall.ChainRule{
+			k8sfirewall.ChainRule{
+				Src:       rule.Dst,
+				Dst:       rule.Src,
+				Sport:     rule.Dport,
+				Dport:     rule.Sport,
+				L4proto:   rule.L4proto,
+				Conntrack: "established",
+			},
+		}
+
+		return in, e
+	}
+
+	if ip == rule.Src {
+		e, in := template()
+		return in, e
+	}
+
+	if ip == rule.Dst {
+		return template()
+	}
+
+	return []k8sfirewall.ChainRule{}, []k8sfirewall.ChainRule{}
+}
+
 func push(ip string, rules []k8sfirewall.ChainRule) {
 	if len(rules) > 0 {
 		reset(ip)
 	}
 	for _, rule := range rules {
-		ingressRule := rule
 
-		//	Reformat for egress
-		egressRule := rule
-		egressRule.Dst = rule.Src
-		egressRule.Src = rule.Dst
-		egressRule.Sport = rule.Dport
-		egressRule.Dport = rule.Sport
+		ingressRules, egressRules := buildConnectionRules(ip, rule)
 
 		//	Egress
-		egress := func(er k8sfirewall.ChainRule) {
+		egress := func(ers []k8sfirewall.ChainRule) {
 			endPoint := "http://" + ip + ":9000/polycube/v1/firewall/fw/chain/egress/append/"
-			data, err := marshal(er)
-			if err == nil {
-				req, err := http.NewRequest("POST", endPoint, bytes.NewBuffer(data))
-				req.Header.Set("Content-Type", "application/json")
+			for _, er := range ers {
+				data, err := marshal(er)
+				if err == nil {
+					req, err := http.NewRequest("POST", endPoint, bytes.NewBuffer(data))
+					req.Header.Set("Content-Type", "application/json")
 
-				client := &http.Client{}
-				_, err = client.Do(req)
-				if err != nil {
-					log.Errorln("Error while trying to send request:", err, "(the pod might be TERMINATING.)")
-					return
+					client := &http.Client{}
+					_, err = client.Do(req)
+					if err != nil {
+						log.Errorln("Error while trying to send request:", err, "(the pod might be TERMINATING.)")
+						return
+					}
 				}
 			}
 		}
 
 		//	Ingress
-		ingress := func(ir k8sfirewall.ChainRule) {
+		ingress := func(irs []k8sfirewall.ChainRule) {
 			endPoint := "http://" + ip + ":9000/polycube/v1/firewall/fw/chain/ingress/append/"
-			data, err := marshal(ir)
-			if err == nil {
-				req, err := http.NewRequest("POST", endPoint, bytes.NewBuffer(data))
-				req.Header.Set("Content-Type", "application/json")
+			for _, ir := range irs {
+				data, err := marshal(ir)
+				if err == nil {
+					req, err := http.NewRequest("POST", endPoint, bytes.NewBuffer(data))
+					req.Header.Set("Content-Type", "application/json")
 
-				client := &http.Client{}
-				_, err = client.Do(req)
-				if err != nil {
-					log.Errorln("Error while trying to send request:", err, "(the pod might be TERMINATING.)")
-					return
+					client := &http.Client{}
+					_, err = client.Do(req)
+					if err != nil {
+						log.Errorln("Error while trying to send request:", err, "(the pod might be TERMINATING.)")
+						return
+					}
 				}
 			}
 		}
 
-		egress(egressRule)
-		ingress(ingressRule)
+		egress(egressRules)
+		ingress(ingressRules)
 
 		log.Infoln("Pushed the following policy in", ip, ":")
 
-		ingressText := formatText(ingressRule, ip, "ingress")
-		egressText := formatText(egressRule, ip, "egress")
-		fmt.Println(ingressText)
-		fmt.Println(egressText)
+		if len(ingressRules) > 1 {
+			ingressText := formatText(ingressRules[0], ip, "ingress")
+			fmt.Println(ingressText)
+		} else {
+			egressText := formatText(egressRules[0], ip, "egress")
+			fmt.Println(egressText)
+		}
+
 	}
 }
 
