@@ -105,7 +105,7 @@ func push(ip string, rules []k8sfirewall.ChainRule) {
 		//	Egress
 		egress := func(er k8sfirewall.ChainRule) {
 			endPoint := "http://" + ip + ":9000/polycube/v1/firewall/fw/chain/egress/append/"
-			data, err := marshal(rule)
+			data, err := marshal(er)
 			if err == nil {
 				req, err := http.NewRequest("POST", endPoint, bytes.NewBuffer(data))
 				req.Header.Set("Content-Type", "application/json")
@@ -122,7 +122,7 @@ func push(ip string, rules []k8sfirewall.ChainRule) {
 		//	Ingress
 		ingress := func(ir k8sfirewall.ChainRule) {
 			endPoint := "http://" + ip + ":9000/polycube/v1/firewall/fw/chain/ingress/append/"
-			data, err := marshal(rule)
+			data, err := marshal(ir)
 			if err == nil {
 				req, err := http.NewRequest("POST", endPoint, bytes.NewBuffer(data))
 				req.Header.Set("Content-Type", "application/json")
