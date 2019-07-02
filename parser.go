@@ -59,7 +59,23 @@ func parseIP(ip string) string {
 		return ""
 	}
 
-	return ip
+	cidrSuffix := "/32"
+	splitIP := strings.Split(ip, ".")
+	if splitIP[3] == "-1" {
+		splitIP[3] = "0"
+		cidrSuffix = "/24"
+	}
+	if splitIP[2] == "-1" {
+		splitIP[2] = "0"
+		cidrSuffix = "/16"
+	}
+	if splitIP[1] == "-1" {
+		splitIP[1] = "0"
+		cidrSuffix = "/8"
+	}
+
+	ip = strings.Join(splitIP, ".")
+	return ip + cidrSuffix
 }
 
 func parseAction(action string) string {

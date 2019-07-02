@@ -42,3 +42,17 @@ func TestTemplate(t *testing.T) {
 	assert.Len(t, in, 2)
 	assert.Len(t, e, 1)
 }
+
+func TestParseIP(t *testing.T) {
+	ip := "-1.-1.-1.-1"
+	parsed := parseIP(ip)
+	assert.Equal(t, parsed, "")
+
+	ip = "10.10.10.-1"
+	parsed = parseIP(ip)
+	assert.Equal(t, parsed, "10.10.10.0/24")
+
+	ip = "10.10.-1.-1"
+	parsed = parseIP(ip)
+	assert.Equal(t, parsed, "10.10.0.0/16")
+}
