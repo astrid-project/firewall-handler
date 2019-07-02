@@ -90,7 +90,7 @@ func reset(ip string) {
 
 func buildConnectionRules(ip string, rule k8sfirewall.ChainRule) ([]k8sfirewall.ChainRule, []k8sfirewall.ChainRule) {
 
-	template := func() ([]k8sfirewall.ChainRule, []k8sfirewall.ChainRule) {
+	forwardTemplate := func() ([]k8sfirewall.ChainRule, []k8sfirewall.ChainRule) {
 		in := []k8sfirewall.ChainRule{
 			k8sfirewall.ChainRule{
 				Src:       rule.Src,
@@ -99,6 +99,7 @@ func buildConnectionRules(ip string, rule k8sfirewall.ChainRule) ([]k8sfirewall.
 				Dport:     rule.Dport,
 				L4proto:   rule.L4proto,
 				Conntrack: "new",
+				Action:    rule.Action,
 			},
 			k8sfirewall.ChainRule{
 				Src:       rule.Src,
@@ -107,6 +108,7 @@ func buildConnectionRules(ip string, rule k8sfirewall.ChainRule) ([]k8sfirewall.
 				Dport:     rule.Dport,
 				L4proto:   rule.L4proto,
 				Conntrack: "established",
+				Action:    rule.Action,
 			},
 		}
 		e := []k8sfirewall.ChainRule{
@@ -117,19 +119,45 @@ func buildConnectionRules(ip string, rule k8sfirewall.ChainRule) ([]k8sfirewall.
 				Dport:     rule.Sport,
 				L4proto:   rule.L4proto,
 				Conntrack: "established",
+				Action:    rule.Action,
 			},
 		}
 
 		return in, e
 	}
 
-	if ip == rule.Src {
-		e, in := template()
-		return in, e
+	dropTemplate := func(rule k8sfirewall.ChainRule) []k8sfirewall.ChainRule {
+		return []k8sfirewall.ChainRule{
+			k8sfirewall.ChainRule{
+				Src:       rule.Src,
+				Dst:       rule.Dst,
+				Sport:     rule.Sport,
+				Dport:     rule.Dport,
+				L4proto:   rule.L4proto,
+				Conntrack: "new",
+				Action:    rule.Action,
+			},
+		}
 	}
 
-	if ip == rule.Dst {
-		return template()
+	if rule.Action == "forward" {
+		if ip == rule.Src {
+			e, in := forwardTemplate()
+			return in, e
+		}
+
+		if ip == rule.Dst {
+			return forwardTemplate()
+		}
+	}
+	if rule.Action == "drop" {
+		if ip == rule.Src {
+			return []k8sfirewall.ChainRule{}, dropTemplate(rule)
+		}
+
+		if ip == rule.Dst {
+			return dropTemplate(rule), []k8sfirewall.ChainRule{}
+		}
 	}
 
 	return []k8sfirewall.ChainRule{}, []k8sfirewall.ChainRule{}
