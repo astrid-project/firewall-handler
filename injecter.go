@@ -88,8 +88,8 @@ func reset(ip string) {
 	egress()
 }
 
-func buildConnectionRules(ip string, rule k8sfirewall.ChainRule) ([]k8sfirewall.ChainRule, []k8sfirewall.ChainRule) {
-
+func buildConnectionRules(_ip string, rule k8sfirewall.ChainRule) ([]k8sfirewall.ChainRule, []k8sfirewall.ChainRule) {
+	ip := _ip + "/32"
 	forwardTemplate := func() ([]k8sfirewall.ChainRule, []k8sfirewall.ChainRule) {
 		in := []k8sfirewall.ChainRule{
 			k8sfirewall.ChainRule{
