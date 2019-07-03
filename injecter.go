@@ -214,14 +214,23 @@ func push(ip string, rules []k8sfirewall.ChainRule) {
 
 		log.Infoln("Pushed the following policy in", ip, ":")
 
-		if len(ingressRules) > 1 {
-			ingressText := formatText(ingressRules[0], ip, "ingress")
-			fmt.Println(ingressText)
+		if rule.Action == "drop" {
+			if len(ingressRules) > 0 {
+				ingressText := formatText(ingressRules[0], ip, "ingress")
+				fmt.Println(ingressText)
+			} else {
+				egressText := formatText(egressRules[0], ip, "egress")
+				fmt.Println(egressText)
+			}
 		} else {
-			egressText := formatText(egressRules[0], ip, "egress")
-			fmt.Println(egressText)
+			if len(ingressRules) > 1 {
+				ingressText := formatText(ingressRules[0], ip, "ingress")
+				fmt.Println(ingressText)
+			} else {
+				egressText := formatText(egressRules[0], ip, "egress")
+				fmt.Println(egressText)
+			}
 		}
-
 	}
 }
 
