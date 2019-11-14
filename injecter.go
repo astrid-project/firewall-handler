@@ -101,27 +101,8 @@ func buildConnectionRules(_ip string, rule k8sfirewall.ChainRule) ([]k8sfirewall
 				Conntrack: "new",
 				Action:    rule.Action,
 			},
-			k8sfirewall.ChainRule{
-				Src:       rule.Src,
-				Dst:       rule.Dst,
-				Sport:     rule.Sport,
-				Dport:     rule.Dport,
-				L4proto:   rule.L4proto,
-				Conntrack: "established",
-				Action:    rule.Action,
-			},
 		}
-		e := []k8sfirewall.ChainRule{
-			k8sfirewall.ChainRule{
-				Src:       rule.Dst,
-				Dst:       rule.Src,
-				Sport:     rule.Dport,
-				Dport:     rule.Sport,
-				L4proto:   rule.L4proto,
-				Conntrack: "established",
-				Action:    rule.Action,
-			},
-		}
+		e := []k8sfirewall.ChainRule{}
 
 		return in, e
 	}
@@ -212,25 +193,7 @@ func push(ip string, rules []k8sfirewall.ChainRule) {
 		egress(egressRules)
 		ingress(ingressRules)
 
-		log.Infoln("Pushed the following policy in", ip, ":")
-
-		if rule.Action == "drop" {
-			if len(ingressRules) > 0 {
-				ingressText := formatText(ingressRules[0], ip, "ingress")
-				fmt.Println(ingressText)
-			} else {
-				egressText := formatText(egressRules[0], ip, "egress")
-				fmt.Println(egressText)
-			}
-		} else {
-			if len(ingressRules) > 1 {
-				ingressText := formatText(ingressRules[0], ip, "ingress")
-				fmt.Println(ingressText)
-			} else {
-				egressText := formatText(egressRules[0], ip, "egress")
-				fmt.Println(egressText)
-			}
-		}
+		log.Infof("Pushed rules in %s", ip)
 	}
 }
 
