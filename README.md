@@ -1,3 +1,5 @@
+AUTHOR Elis Lulja [@SunSince90](https://github.com/SunSince90)
+
 # CB
 
 CB is a rule forwarder which creates the appropriate firewall rules after 
